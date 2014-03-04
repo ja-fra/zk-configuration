@@ -14,7 +14,7 @@ public class Main {
 
         try {
             System.out.println("Main: Start");
-            ZookeeperConfiguration zkc = new ZookeeperConfiguration(zkConnect);
+            ZookeeperConfiguration zkc = new ZookeeperConfiguration(zkConnect, 5000, "/test");
 
             System.out.println("Main: Set test=Foo");
             zkc.setProperty("test", "foo");
