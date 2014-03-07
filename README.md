@@ -13,7 +13,7 @@ String zkRoot = "/config"; // path where to read/store the configuration
                            // will be (recursively) created as needed.
 
 // Constructor will block until connection is established
-Configuration config = new ZookeeperConfiguration(zkConnection, 5000, "/test");
+Configuration config = new ZookeeperConfiguration(zkConnection, zkTimeout, zkRoot);
 
 // Use the Configuration object like any other Commons-Configuration implementation.
 String val = config.getString(key);
