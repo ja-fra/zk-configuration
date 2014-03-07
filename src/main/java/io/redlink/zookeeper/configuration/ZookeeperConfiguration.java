@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 public class ZookeeperConfiguration extends AbstractConfiguration {
 
@@ -39,11 +40,15 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                 public Object load(String key) throws Exception {
                     log.trace("loading Key: {}", key);
                     try {
+                        sync.await();
                         return deserialize(zk.getData(key, true, null));
                     } catch (KeeperException e) {
                         if (e.code() == KeeperException.Code.NONODE) {
                             // this is expected if the requested node does not exist.
                             throw e;
+                        } else if (e.code() == KeeperException.Code.CONNECTIONLOSS) {
+                            sync.raiseBarrier();
+                            return this.load(key);
                         } else {
                             log.error("Cache.load: " + e.getMessage(), e);
                             throw e;
@@ -56,31 +61,30 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
             });
 
 
-    private final List<String> keyList = new ArrayList<String>();
-    private ZooKeeper zk = null;
+    private final List<String> keyList = new ArrayList<>();
+    ZooKeeper zk = null;
+    private final ConnectionBarrier sync;
 
     public ZookeeperConfiguration(String zkConnectionString, int zkTimeout, String zkRoot) throws IOException {
         this.zkConnectionString = zkConnectionString;
         this.zkTimeout = zkTimeout;
         // make sure the root ends with a slash
         this.zkRoot = zkRoot.replaceFirst("/?$", "/");
+        this.sync = new ConnectionBarrier();
 
         zkInit();
     }
 
     private void zkInit() throws IOException {
-        final CountDownLatch sync = new CountDownLatch(1);
+        sync.raiseBarrier();
+        final CountDownLatch connected = new CountDownLatch(1);
         log.debug("zkInit - connecting");
         // if (zk != null) zk.close();
-        zk = new ZooKeeper(zkConnectionString, zkTimeout, new ZKWatcher(sync));
+        zk = new ZooKeeper(zkConnectionString, zkTimeout, new ZKWatcher(connected, sync));
 
-        try {
-            sync.await(zkTimeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            throw new IOException("Could not connect", e);
-        }
         log.info("zkInit - ensure root node exists");
         try {
+            connected.await(zkTimeout, TimeUnit.MILLISECONDS);
             for (int i = zkRoot.indexOf('/',1); i > 0; i = zkRoot.indexOf('/', i+1)) {
                 final String path = zkRoot.substring(0, i);
                 log.trace("zkInit - checking existence of {}", path);
@@ -90,22 +94,28 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
             }
             log.debug("zkInit - zkRoot {} exists", zkRoot);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw new IOException("Could not connect", e);
         } catch (KeeperException e) {
-            e.printStackTrace();
+            throw new IOException("Initial Connection failed - is zookeeper available?", e);
         }
         log.info("zkInit - connected");
+        sync.lowerBarrier();
     }
 
     @Override
     protected void clearPropertyDirect(String key) {
         try {
             final String path = toZookeeperPath(key);
+            sync.await();
             zk.delete(path, -1);
             cache.invalidate(path);
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (KeeperException e) {
+            if (handleException(e)) {
+                clearPropertyDirect(key);
+                return;
+            }
             e.printStackTrace();
         }
     }
@@ -117,7 +127,6 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 
     @Override
     public void addProperty(String key, Object value) {
-        final String path = toZookeeperPath(key);
         fireEvent(EVENT_ADD_PROPERTY, key, value, true);
 
         final Object prevValue = getProperty(key);
@@ -152,26 +161,49 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
     }
 
     protected void setPropertyDirect(String key, Object value) {
-        final String path = toZookeeperPath(key);
-        try {
-            final Stat stat = zk.exists(path, false);
-            if (stat != null) {
-                log.debug("{} already exists, overwrite", key);
-                zk.setData(path, serialize(value), stat.getVersion());
-            } else {
-                log.debug("new key {}", key);
-                zk.create(path, serialize(value), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        if (value == null) {
+            clearPropertyDirect(key);
+        } else {
+            final String path = toZookeeperPath(key);
+            try {
+                sync.await();
+                final Stat stat = zk.exists(path, false);
+                if (stat != null) {
+                    log.debug("{} already exists, overwrite", key);
+                    zk.setData(path, serialize(value), stat.getVersion());
+                } else {
+                    log.debug("new key {}", key);
+                    zk.create(path, serialize(value), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (KeeperException e) {
+                if (handleException(e)) {
+                    setPropertyDirect(key, value);
+                    return;
+                }
+                e.printStackTrace();
+            } finally {
+                cache.invalidate(path);
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (KeeperException e) {
-            e.printStackTrace();
         }
     }
 
     private byte[] serialize(Object value) {
         try {
-            if (value instanceof List) {
+            if (value.getClass().isArray()) {
+                StringBuilder sb = new StringBuilder(255);
+                sb.append("(\"");
+                Object[] value1 = (Object[]) value;
+                for (int i = 0; i < value1.length; i++) {
+                    if (i > 0) {
+                        sb.append("\", \"");
+                    }
+                    sb.append(String.valueOf(value1[i]).replaceAll("\"", "\\\""));
+                }
+                sb.append("\")");
+                return sb.toString().getBytes("utf8");
+            } else if (value instanceof List) {
                 StringBuilder sb = new StringBuilder(255);
                 sb.append("(\"");
                 final Iterator it = ((List) value).iterator();
@@ -198,7 +230,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                 List<Object> list = new ArrayList<>();
                 string = string.substring(2, string.length()-2);
                 for(String v:string.split("\"\\s*,\\s*\"")) {
-                    list.add(v.replaceAll("\\\"", "\""));
+                    list.add(v.replaceAll("\\\\\"", "\""));
                 }
                 return list;
             } else {
@@ -241,6 +273,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
     private List<String> listKeys() {
         try {
             if (keyList.isEmpty()) {
+                sync.await();
                 synchronized (keyList) {
                     if (keyList.isEmpty()) {
                         keyList.addAll(zk.getChildren(zkRoot, true));
@@ -249,6 +282,9 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
             }
             return keyList;
         } catch (KeeperException e) {
+            if (handleException(e)) {
+                return listKeys();
+            }
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -260,13 +296,24 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
         return zkRoot + key.replaceAll("[/ ]", ".");
     }
 
+    private boolean handleException(KeeperException e) {
+        switch (e.code()) {
+            case CONNECTIONLOSS:
+                this.sync.raiseBarrier();
+                return true;
+        }
+        return false;
+    }
+
     private class ZKWatcher implements Watcher {
 
         private final Logger log = LoggerFactory.getLogger(ZKWatcher.class);
         private final CountDownLatch syncConnect;
+        private final ConnectionBarrier connectionBarrier;
 
-        public ZKWatcher(CountDownLatch syncConnect) {
-            this.syncConnect = syncConnect;
+        public ZKWatcher(CountDownLatch connected, ConnectionBarrier sync) {
+            this.syncConnect = connected;
+            this.connectionBarrier = sync;
         }
 
         @Override
@@ -304,6 +351,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                 case Expired:
                 case Disconnected:
                     log.info("zk {}, trying to reconnect", watchedEvent.getState());
+                    connectionBarrier.raiseBarrier();
                     cache.invalidateAll();
                     try {
                         zk.close();
@@ -326,6 +374,39 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                     log.info("zk authenticated");
                     break;
             }
+        }
+    }
+
+    private static class ConnectionBarrier extends AbstractQueuedSynchronizer {
+
+        public ConnectionBarrier() {
+            this.setState(1);
+        }
+
+        @Override
+        protected boolean tryReleaseShared(int arg) {
+            this.setState(0);
+            return true;
+        }
+
+        @Override
+        protected int tryAcquireShared(int arg) {
+            return (getState()==0)?1:-1;
+        }
+
+        public void raiseBarrier() {
+            // Block/reset
+            this.setState(1);
+        }
+
+        public void lowerBarrier() {
+            // Free
+            this.releaseShared(1);
+        }
+
+        public void await() throws InterruptedException {
+            // wait for barrier to go down.
+            this.acquireSharedInterruptibly(1);
         }
     }
 }
