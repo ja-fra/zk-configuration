@@ -4,12 +4,21 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+        <relativePath />
+    </parent>
+
     <groupId>io.redlink.zookeeper</groupId>
     <artifactId>zookeeper-configuration</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
 
     <name>Zookeeper Configuration</name>
     <description>Access to Zookeeper through Commons-Configuration Interface</description>
+    <url>https://bitbucket.org/redlinkgmbh/zookeeperconfiguration</url>
 
     <developers>
         <developer>
@@ -29,6 +38,12 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>git@bitbucket.org:redlinkgmbh/zookeeperconfiguration.git</connection>
+        <developerConnection>git@bitbucket.org:redlinkgmbh/zookeeperconfiguration.git</developerConnection>
+        <url>https://bitbucket.org/redlinkgmbh/zookeeperconfiguration.git</url>
+    </scm>
+
     <properties>
         <zookeeper.version>3.4.5</zookeeper.version>
         <commons-conf.version>1.10</commons-conf.version>
@@ -37,12 +52,23 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
                     <encoding>utf-8</encoding>
                     <source>1.7</source>
                     <target>1.7</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5</version>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <pushChanges>false</pushChanges>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
                 </configuration>
             </plugin>
         </plugins>
