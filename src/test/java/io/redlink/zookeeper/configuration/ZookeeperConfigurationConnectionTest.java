@@ -62,20 +62,20 @@ public class ZookeeperConfigurationConnectionTest {
         config.setProperty(key, v1);
         assertEquals(v1, config.getString(key, v5));
 
-        server.closeSession(config.zk.getSessionId());
+        server.closeSession(config.getZkSessionId());
 
         config.addProperty(key, v2);
         assertEquals(v1, config.getString(key, v5));
         assertThat(config.getList(key), CoreMatchers.<Object>hasItems(v1, v2));
 
         config.addProperty(key, v3);
-        server.closeSession(config.zk.getSessionId());
+        server.closeSession(config.getZkSessionId());
         config.addProperty(key, v4);
-        server.closeSession(config.zk.getSessionId());
+        server.closeSession(config.getZkSessionId());
         assertEquals(v1, config.getString(key, v5));
         assertThat(config.getList(key), CoreMatchers.<Object>hasItems(v1, v2, v3, v4));
 
-        server.closeSession(config.zk.getSessionId());
+        server.closeSession(config.getZkSessionId());
         config.clearProperty(key);
         assertNull(config.getString(key));
         assertEquals(v5, config.getString(key, v5));

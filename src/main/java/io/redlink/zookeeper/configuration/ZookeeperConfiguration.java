@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 public class ZookeeperConfiguration extends AbstractConfiguration {
 
@@ -43,15 +42,18 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                         sync.await();
                         return deserialize(zk.getData(key, true, null));
                     } catch (KeeperException e) {
-                        if (e.code() == KeeperException.Code.NONODE) {
-                            // this is expected if the requested node does not exist.
-                            throw e;
-                        } else if (e.code() == KeeperException.Code.CONNECTIONLOSS) {
-                            sync.raiseBarrier();
-                            return this.load(key);
-                        } else {
-                            log.error("Cache.load: " + e.getMessage(), e);
-                            throw e;
+                        switch (e.code()) {
+                            case NONODE:
+                                // this is expected if the requested node does not exist.
+                                throw e;
+                            case CONNECTIONLOSS:
+                            case SESSIONEXPIRED:
+                                // reconnect & try again
+                                sync.raiseBarrier();
+                                return this.load(key);
+                            default:
+                                log.error("Cache.load: " + e.getMessage(), e);
+                                throw e;
                         }
                     } catch (final Throwable t) {
                         log.error("Cache.load: " + t.getMessage(), t);
@@ -59,10 +61,9 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                     }
                 }
             });
-
-
     private final List<String> keyList = new ArrayList<>();
-    ZooKeeper zk = null;
+
+    private ZooKeeper zk = null;
     private final ConnectionBarrier sync;
 
     public ZookeeperConfiguration(String zkConnectionString, int zkTimeout, String zkRoot) throws IOException {
@@ -84,15 +85,18 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
 
         log.info("zkInit - ensure root node exists");
         try {
-            connected.await(zkTimeout, TimeUnit.MILLISECONDS);
-            for (int i = zkRoot.indexOf('/',1); i > 0; i = zkRoot.indexOf('/', i+1)) {
-                final String path = zkRoot.substring(0, i);
-                log.trace("zkInit - checking existence of {}", path);
-                if (zk.exists(path, false) == null) {
-                    zk.create(path, new byte[] {}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            if (connected.await(zkTimeout, TimeUnit.MILLISECONDS)) {
+                for (int i = zkRoot.indexOf('/',1); i > 0; i = zkRoot.indexOf('/', i+1)) {
+                    final String path = zkRoot.substring(0, i);
+                    log.trace("zkInit - checking existence of {}", path);
+                    if (zk.exists(path, false) == null) {
+                        zk.create(path, new byte[] {}, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                    }
                 }
+                log.debug("zkInit - zkRoot {} exists", zkRoot);
+            } else {
+                throw new IOException("Timeout while establishing ZooKeeper connection");
             }
-            log.debug("zkInit - zkRoot {} exists", zkRoot);
         } catch (InterruptedException e) {
             throw new IOException("Could not connect", e);
         } catch (KeeperException e) {
@@ -299,10 +303,18 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
     private boolean handleException(KeeperException e) {
         switch (e.code()) {
             case CONNECTIONLOSS:
+            case SESSIONEXPIRED:
                 this.sync.raiseBarrier();
                 return true;
         }
         return false;
+    }
+
+    /**
+     * for unit-testing only
+     */
+    long getZkSessionId() {
+        return zk.getSessionId();
     }
 
     private class ZKWatcher implements Watcher {
@@ -353,6 +365,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
                     log.info("zk {}, trying to reconnect", watchedEvent.getState());
                     connectionBarrier.raiseBarrier();
                     cache.invalidateAll();
+                    keyList.clear();
                     try {
                         zk.close();
                     } catch (InterruptedException e) {
@@ -377,36 +390,4 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
         }
     }
 
-    private static class ConnectionBarrier extends AbstractQueuedSynchronizer {
-
-        public ConnectionBarrier() {
-            this.setState(1);
-        }
-
-        @Override
-        protected boolean tryReleaseShared(int arg) {
-            this.setState(0);
-            return true;
-        }
-
-        @Override
-        protected int tryAcquireShared(int arg) {
-            return (getState()==0)?1:-1;
-        }
-
-        public void raiseBarrier() {
-            // Block/reset
-            this.setState(1);
-        }
-
-        public void lowerBarrier() {
-            // Free
-            this.releaseShared(1);
-        }
-
-        public void await() throws InterruptedException {
-            // wait for barrier to go down.
-            this.acquireSharedInterruptibly(1);
-        }
-    }
 }
