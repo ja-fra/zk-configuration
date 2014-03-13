@@ -1,4 +1,4 @@
-package io.redlink.zookeeper.configuration;
+package io.redlink.dev.zkconfig;
 
 import com.google.common.cache.*;
 import org.apache.commons.configuration.AbstractConfiguration;

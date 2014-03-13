@@ -1,4 +1,4 @@
-package io.redlink.zookeeper.configuration;
+package io.redlink.dev.zkconfig;
 
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;

@@ -15,13 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.redlink.zookeeper.configuration;
+package io.redlink.dev.zkconfig;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import org.apache.commons.configuration.Configuration;
 import org.apache.zookeeper.server.ServerCnxnFactory;
-import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.collection.IsIterableContainingInOrder;
@@ -57,8 +56,6 @@ public class ZookeeperConfigurationTest {
 
     @Before
     public void setUp() throws Exception {
-        ServerConfig config = new ServerConfig();
-
         int tickTime = 2000;
         int numConnections = 100;
         File dir = temp.newFolder("zkHome");

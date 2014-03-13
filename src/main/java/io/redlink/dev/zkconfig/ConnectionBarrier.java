@@ -1,4 +1,4 @@
-package io.redlink.zookeeper.configuration;
+package io.redlink.dev.zkconfig;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;

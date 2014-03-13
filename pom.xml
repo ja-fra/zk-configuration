@@ -11,22 +11,21 @@
         <relativePath />
     </parent>
 
-    <groupId>io.redlink.zookeeper</groupId>
-    <artifactId>zookeeper-configuration</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <groupId>com.github.ja-fra.zk-configuration</groupId>
+    <artifactId>zkconfig</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Zookeeper Configuration</name>
     <description>Access to Zookeeper through Commons-Configuration Interface</description>
-    <url>https://bitbucket.org/redlinkgmbh/zookeeperconfiguration</url>
+    <url>https://github.com/ja-fra/zk-configuration</url>
 
     <developers>
         <developer>
             <id>ja-fra</id>
             <name>Jakob Frank</name>
-            <email>jakob.frank@redlink.co</email>
-            <organization>redlink GmbH</organization>
-            <organizationUrl>http://redlink.co</organizationUrl>
+            <email>jakob@apache.org</email>
+            <url>https://github.com/ja-fra/</url>
         </developer>
     </developers>
 
@@ -39,9 +38,9 @@
     </licenses>
 
     <scm>
-        <connection>git@bitbucket.org:redlinkgmbh/zookeeperconfiguration.git</connection>
-        <developerConnection>git@bitbucket.org:redlinkgmbh/zookeeperconfiguration.git</developerConnection>
-        <url>https://bitbucket.org/redlinkgmbh/zookeeperconfiguration.git</url>
+        <connection>scm:git:git@github.com:ja-fra/zk-configuration.git</connection>
+        <developerConnection>scm:git:git@github.com:ja-fra/zk-configuration.git</developerConnection>
+        <url>https://github.com/ja-fra/zk-configuration.git</url>
     </scm>
 
     <properties>

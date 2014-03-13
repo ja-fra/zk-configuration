@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="io.redlink.zookeeper" level="TRACE"/>
+    <logger name="io.redlink.dev.zkconfig" level="TRACE"/>
 
     <root level="WARN">
         <appender-ref ref="STDOUT" />

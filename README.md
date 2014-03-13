@@ -28,6 +28,15 @@ config.clearProperty(key);
 
 ```
 
+## How to get it
+```xml
+<dependency>
+    <groupId>com.github.ja-fra.zk-configuration</groupId>
+    <artifactId>zkconfig</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
 [1]: http://zookeeper.apache.org/
 [2]: http://commons.apache.org/proper/commons-configuration/
 
