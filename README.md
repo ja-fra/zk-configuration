@@ -1,6 +1,6 @@
-# ZookeeperConfiguration
+# zk-configuration
 
-ZookeeperConfiguration provides access to a configuration settings stored in a [ZooKeeper][1] ensemble via the [Commons Configuration][2] API.
+zk-configuration provides access to a configuration settings stored in a [ZooKeeper][1] ensemble via the [Commons Configuration][2] API.
 
 ## Usage:
 
@@ -37,6 +37,11 @@ config.clearProperty(key);
 </dependency>
 ```
 
+## License
+
+zk-configuration is licensed under the [Apache Software License, Version 2.0][AL2].
+
 [1]: http://zookeeper.apache.org/
 [2]: http://commons.apache.org/proper/commons-configuration/
+[AL2]: http://www.apache.org/licenses/LICENSE-2.0.txt
 
