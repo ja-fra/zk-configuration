@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.redlink.dev.zkconfig;
+package at.salzburgresearch.kmt.zkconfig;
 
 import com.google.common.cache.*;
 import org.apache.commons.configuration.AbstractConfiguration;
@@ -82,8 +82,8 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
     public ZookeeperConfiguration(String zkConnectionString, int zkTimeout, String zkRoot) throws IOException {
         this.zkConnectionString = zkConnectionString;
         this.zkTimeout = zkTimeout;
-        // make sure the root ends with a slash
-        this.zkRoot = zkRoot.replaceFirst("/?$", "/");
+        // make sure the root starts and ends with a slash
+        this.zkRoot = zkRoot.replaceFirst("^/?", "/").replaceFirst("/?$", "/");
         this.sync = new ConnectionBarrier();
 
         zkInit();
@@ -99,7 +99,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
         log.info("zkInit - ensure root node exists");
         try {
             if (connected.await(zkTimeout, TimeUnit.MILLISECONDS)) {
-                for (int i = zkRoot.indexOf('/',1); i > 0; i = zkRoot.indexOf('/', i+1)) {
+                for (int i = zkRoot.indexOf('/', 1); i > 0; i = zkRoot.indexOf('/', i+1)) {
                     final String path = zkRoot.substring(0, i);
                     log.trace("zkInit - checking existence of {}", path);
                     if (zk.exists(path, false) == null) {
@@ -277,7 +277,7 @@ public class ZookeeperConfiguration extends AbstractConfiguration {
             if (e.getCause() instanceof KeeperException && ((KeeperException) e.getCause()).code() == KeeperException.Code.NONODE) {
                 return null;
             }
-            e.printStackTrace();
+            log.error("Could not load property {}: {}", key, e);
         }
         return null;
     }

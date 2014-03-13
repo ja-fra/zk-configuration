@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="io.redlink.dev.zkconfig" level="TRACE"/>
+    <logger name="at.salzburgresearch.kmt.zkconfig" level="TRACE"/>
 
     <root level="WARN">
         <appender-ref ref="STDOUT" />
