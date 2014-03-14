@@ -2,7 +2,7 @@
 
 zk-configuration provides access to a configuration settings stored in a [ZooKeeper][1] ensemble via the [Commons Configuration][2] API.
 
-## Usage:
+## Usage
 
 ```java
 String zkConnection = "localhost:2181"; // ZooKeeper connection string
@@ -12,6 +12,7 @@ int zkTimeout = 5000; // timeout
 String zkRoot = "/config"; // path where to read/store the configuration
                            // will be (recursively) created as needed.
 
+String key = "my-key";
 // Constructor will block until connection is established
 Configuration config = new ZookeeperConfiguration(zkConnection, zkTimeout, zkRoot);
 
