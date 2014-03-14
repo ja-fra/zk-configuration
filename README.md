@@ -34,7 +34,7 @@ config.clearProperty(key);
 <dependency>
     <groupId>com.github.ja-fra.zk-configuration</groupId>
     <artifactId>zkconfig</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
